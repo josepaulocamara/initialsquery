@@ -1,0 +1,24 @@
+SET TIME ZONE 'Brazil/East';
+
+WITH hofw AS (SELECT DISTINCT(email), 
+leader, journey_start, rest_interval, 
+rest_interval + '01:00:00' AS end_interval, journey_end
+FROM customer_service_teams
+WHERE input_date > '2018-12-02'
+GROUP BY 3, 4, 5, 1, 2,6
+ORDER BY 3,4),
+
+pepa AS (SELECT *
+FROM hofw
+CROSS JOIN (SELECT x::time
+FROM   generate_series 
+(timestamp '2018-12-05 08:00', 
+timestamp '2018-12-05 22:00', 
+interval  '30 min') t(x)) AS total
+WHERE x >= journey_start AND x < rest_interval 
+OR x >= end_interval AND x< journey_end)
+
+SELECT x, COUNT(x)
+FROM pepa
+GROUP BY x
+ORDER BY x ASC
