@@ -1,0 +1,19 @@
+SET TIME ZONE 'Brazil/East';
+WITH 
+call_per_hour AS 
+(SELECT date_trunc('hour', created_at) + (((date_part('minute', created_at)::integer / 30::integer) * 30::integer)|| ' minutes')::interval AS ten_min_timestamp,
+COUNT(*) AS answered_calls, COUNT(DISTINCT agent_id) AS active_agents
+FROM phone_call_records
+WHERE 	inbound IS TRUE AND
+DATE(created_at::timestamp AT TIME ZONE 'UTC') = '2018-12-04'
+GROUP BY ten_min_timestamp), 
+
+drop_per_hour AS (SELECT date_trunc('hour', created_at) + (((date_part('minute', created_at)::integer / 30::integer) * 30::integer)|| ' minutes')::interval AS ten_min_timestamp,
+COUNT(*) AS dropped_calls
+FROM phone_call_drops
+WHERE DATE(created_at::timestamp AT TIME ZONE 'UTC') = '2018-12-04'
+GROUP BY ten_min_timestamp)
+
+SELECT call_per_hour.ten_min_timestamp ::timestamp AT TIME ZONE 'UTC', answered_calls::integer, dropped_calls::integer, (answered_calls +COALESCE(dropped_calls, 0) ) ::integer AS total, active_agents :: integer 
+FROM call_per_hour
+LEFT JOIN drop_per_hour ON call_per_hour.ten_min_timestamp = drop_per_hour.ten_min_timestamp
