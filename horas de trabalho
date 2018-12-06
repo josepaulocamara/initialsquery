@@ -1,0 +1,9 @@
+SET TIME ZONE 'Brazil/East';
+
+
+WITH hofw AS (SELECT DISTINCT(email), leader, journey_start, rest_interval, rest_interval + '01:00:00', journey_end, 
+DATE_TRUNC ('hour', journey_start ) AS time
+FROM customer_service_teams
+WHERE input_date > '2018-12-02'
+GROUP BY 3, 4, 5, 1, 2,6
+ORDER BY 3,4)
