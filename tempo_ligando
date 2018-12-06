@@ -2,14 +2,15 @@ SET TIME ZONE 'Brazil/East';
 
 WITH time_calling AS (SELECT DISTINCT agent_id, SUM(calltime):: numeric AS call_time
 FROM 	phone_call_records
-WHERE DATE(created_at :: timestamp AT TIME ZONE 'UTC') = '2018-12-04'
+WHERE agent_id IS NOT NULL AND
+DATE(created_at :: timestamp AT TIME ZONE 'UTC') = '2018-12-05'
 GROUP BY 1 ),
 
 usuario AS ( SELECT id, email
 FROM admin_users
 GROUP BY 1)
 
-SELECT email, ROUND(call_time/60 :: numeric,2) AS time_min, ROUND(call_time/3600 :: numeric,2) AS time_hour 
+SELECT email, ROUND(call_time/60 :: numeric,2) AS time_min, ROUND(call_time/3600 :: numeric,2) AS time_hour
 FROM time_calling
 LEFT JOIN usuario ON agent_id = id
 ORDER BY 2 DESC
