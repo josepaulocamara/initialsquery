@@ -1,0 +1,13 @@
+WITH resume AS (SELECT admin_user_id AS adm, sales.order_id AS order, revenue AS rev, percentage AS perc
+FROM SALES
+JOIN commissioning_events
+ON sales.order_id = commissioning_events.order_id
+WHERE payment_type = 'CreditCard' AND
+payment_date BETWEEN'2018-12-05' AND '2018-12-06')
+
+SELECT admin_users.email AS guia , ROUND(1.*perc*rev, 2) AS total_vendido
+FROM resume
+JOIN admin_users
+ON resume.adm = admin_users.id
+GROUP BY 1,2
+ORDER BY 2 DESC
