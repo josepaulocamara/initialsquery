@@ -1,0 +1,8 @@
+SELECT date_trunc('day', customer_contacts.updated_at)::date AS dat, 
+       1.*sum(case when effective_contact = 't' then 1 else 0 end)/count(*)
+FROM customer_contacts
+JOIN contact_reasons ON customer_contacts.contact_reason_id = contact_reasons.id
+WHERE customer_contacts.contact_type = 'active' 
+AND customer_contacts.updated_at BETWEEN '2018-10-26' AND '2018-12-02'
+group by dat
+order by dat
