@@ -1,0 +1,13 @@
+SELECT  date_trunc('day',updated_at)as day,
+     --count (*) As bo_resolvidos,
+     sum (case when status = 'resolved' and updated_at - created_at <= interval '7 days'  then 1 else 0 end) as _7_dias ,
+     sum (case when status = 'resolved' and updated_at - created_at between interval '7 days'  and interval '14 days' then 1 else 0 end) as _14_dias,
+     sum (case when status = 'resolved' and updated_at - created_at between interval '14 days'  and interval '21 days'  then 1 else 0 end) as _21_dias,
+     sum (case when status = 'resolved' and updated_at - created_at between interval '21 days'  and interval '28 days'  then 1 else 0 end) as _28_dias,
+     sum (case when status = 'resolved' and updated_at - created_at > interval '28 days' then 1 else 0 end) as mais_28_dias,
+     sum (case when status = 'new' then 1 else 0 end) as _novos,
+     sum (case when status = 'in_progress' then 1 else 0 end) as _em_progresso
+FROM bo_operations
+Where updated_at between '2018-10-01' and '2018-12-10'
+group by date_trunc('day',updated_at)
+order by date_trunc('day',updated_at) asc
