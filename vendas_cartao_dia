@@ -74,4 +74,5 @@
 	group by 1, 2
 	order by 2 DESC
 
-	                       
+	                       select ROUND(AVG(grade),2) as _bo  from nps_surveys
+where type = 'BoOperationSurvey' OR type = 'RefundSurvey' and grade IS NOT NULL 
