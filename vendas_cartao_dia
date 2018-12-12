@@ -1,32 +1,77 @@
-WITH usuarios as (
-                select
-                                      distinct email AS email, semana, ano
-                           from
-                     dblink('host=localhost dbname=relacionamento user= jose.camara password=150992',
-               'select
-                 email, extract (week FROM DATE(input_date)) as semana, extract (year FROM DATE(input_date)) as ano
-                 from
-                 customer_service_teams
-              where customer_service_teams.leader = ''sara.costa@redealumni.com'''
-             ) as feriado (email character varying(255), semana integer, ano integer)), 
+                            with operators as (
+                                            select
+                                                    id,
+                                                    admin_user_id,
+                                                    operator_team_id,
+                                                    started_at AT TIME ZONE 'UTC' as started_at,
+                                                    finished_at AT TIME ZONE 'UTC' as finished_at
+                                            from
+                                                operator_team_associations
+                                            where operator_team_id in (select id from operator_teams where split_ticket='t')
+                                            order by admin_user_id
+                                            )
+
+                          , commissions as (select
+                                                commissioning_events.order_from::timestamp AT TIME ZONE 'UTC' as dia,
+			                                    admin_users.email as admin_user_email,
+			                                    admin_users.id as admin_user_id,
+			                                    line_items.order_id,
+			                                    (1.0/count(*) over (partition by line_items.order_id)) as n_percentage,
+                                                (case when (commissioning_events.revenue >= offers.expected_revenue or billing_integration='f') then commissioning_events.revenue else offers.expected_revenue end) as revenue,
+			                                    customer_contact_id,
+			                                    contact_type,
+			                                    operator_team_id,
+			                                    payment_type,
+			                                    extract (week FROM DATE(commissioning_events.order_from AT TIME ZONE 'UTC')) as semana, 
+                                                            extract (year FROM DATE(commissioning_events.order_from AT TIME ZONE 'UTC')) as ano
+			                                    
+                                            from commissioning_events
+                                            join admin_users on admin_users.id = commissioning_events.admin_user_id
+                                            join customer_contacts on commissioning_events.customer_contact_id = customer_contacts.id
+                                            join operators on operators.admin_user_id = admin_users.id
+                                            and (( commissioning_events.order_from AT TIME ZONE 'UTC'  > operators.started_at AND operators.finished_at is null )
+                                            OR ( commissioning_events.order_from AT TIME ZONE 'UTC' > operators.started_at AND operators.finished_at > commissioning_events.order_from AT TIME ZONE 'UTC'))
+                                            join line_items on line_items.order_id = commissioning_events.order_id
+                                            join offers on offers.id = line_items.offer_id
+                                            join sales on sales.order_id = commissioning_events.order_id
+                                            where
+                                                date(commissioning_events.order_from at time zone 'utc') = '2018-12-11'
+                                            and commissioning_events.event_type = 'payment' and sales.payment_type = 'CreditCard')
 
 
-    resume AS (SELECT admin_user_id AS adm, sales.order_id AS order, revenue AS rev, percentage AS perc, 
-			extract(week FROM (payment_date)) as semana1, extract(year FROM (payment_date)) ano1
-		FROM SALES
-			JOIN commissioning_events
-			ON sales.order_id = commissioning_events.order_id
-		WHERE payment_type = 'CreditCard' AND event_type = 'payment' and
-			DATE(payment_date) = '2018-12-07'),
-    suport AS (SELECT admin_users.email AS guia , ROUND( SUM(1.*perc*rev), 2) AS total_vendido, semana1, ano1
-		FROM resume
-			JOIN admin_users
-			ON resume.adm = admin_users.id
-			group by 1,3,4
-			order by 1,2)
-SELECT distinct email, total_vendido :: money
-FROM usuarios
-        JOIN suport 
-	ON usuarios.email = suport.guia AND semana = semana1 AND ano = ano1
-GROUP BY 1,2
-ORDER BY 2 desc
+                  , resumo as(select
+	                       admin_user_email as email,
+	                       round(sum(revenue * n_percentage), 2) as receita,
+	                       round(sum(n_percentage), 2) as cupons,
+	                       semana as semana,
+	                       ano as ano
+                        from
+	                       commissions
+                        where operator_team_id = 2
+                        group by
+	                       admin_user_email, semana, ano)	                       
+	          , usuarios as  (select
+				  distinct email AS email,
+				  semana,
+				  ano
+                       from
+				dblink('host=localhost dbname=relacionamento user= jose.camara password=150992',
+                                       'select 
+                                          email, 
+                                          extract (week FROM DATE(input_date)) as semana, 
+                                          extract (year FROM DATE(input_date)) as ano
+                                        from
+                                          customer_service_teams
+                                        where customer_service_teams.leader = ''camila.oliveira@redealumni.com''') 
+                                        as feriado (email character varying(255), semana integer, ano integer))
+                                        
+	select 
+		usuarios.email, resumo.receita
+	from 
+		usuarios
+	join resumo
+	on usuarios.email = resumo.email and usuarios.semana = resumo.semana and usuarios.ano = resumo.ano
+	group by 1, 2
+	order by 2 DESC
+
+	                       
