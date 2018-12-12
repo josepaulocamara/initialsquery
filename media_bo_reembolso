@@ -1,0 +1,25 @@
+with 	bo as	(select
+			date_trunc('week', updated_at) as date, 
+			ROUND(AVG(grade),2) as _bo  
+		from nps_surveys
+		where type = 'BoOperationSurvey' and grade IS NOT NULL
+		group by  1
+		order by 1),
+
+	refund as (select
+			date_trunc('week', updated_at) as date, 
+			ROUND(AVG(grade),2) as _refund 
+		  from nps_surveys 
+		where type = 'RefundSurvey' and grade IS NOT NULL
+		group by 1
+		order by 1 ),
+
+	resumo as (select
+			COALESCE(bo.date, refund.date), _bo, _refund
+		from bo
+		full join refund
+			on bo.date = refund.date
+		order by 1)
+
+Select ROUND(AVG(_bo),2), ROUND(AVG(_refund),2)
+from resumo
